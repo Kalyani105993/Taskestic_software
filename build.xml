@@ -1,0 +1,251 @@
+<project name="pms-java" default="build" basedir=".">
+
+  <!-- ===================================================================== -->
+  <!-- =========================== BUILD TARGETS =========================== -->
+  <!-- ===================================================================== -->
+
+  <target name="build" depends="clean, include, compile, war-local"
+          description="build the local war file - war-local" />
+
+  <target name="build-server" depends="include, compile, war-server"
+          description="build the production server war file" />
+
+  <!-- ===================================================================== -->
+  <!-- ========================== COMPILE TARGETS ========================== -->
+  <!-- ===================================================================== -->
+
+	
+	<!--import file="/opt/apache-tomcat-6.0.18/bin/catalina-tasks.xml"/>
+	  
+	   <target name="jsp_compile"> 
+
+	    <jasper 
+	             validateXml="false" 
+	             uriroot="${webapp.path}" 
+	             webXmlFragment="${webapp.path}/WEB-INF/generated_web.xml" 
+	             outputDir="${webapp.path}/WEB-INF/src" /> 
+
+	  </target--> 
+
+
+	<target name="jsp_compile">
+		<echo message="Started JSP compile..."/>  	
+	    <description>Take all .jsp pages and convert them into servlets using the Tomcat jsp compiler</description>
+	    <taskdef classname="org.apache.jasper.JspC" name="jasper2">
+	        <classpath id="jspc.classpath">
+	            <fileset dir="${deploy.server}/lib">
+	            	<include name="*.jar"/>
+	            </fileset>
+	            <fileset dir="${deploy.server}/bin"> 
+	            	<include name="*.jar"/>
+	            </fileset>
+	        </classpath>
+	    	
+	    </taskdef>
+	
+	    <jasper2 uriroot="."
+		    	 webXmlFragment="./WEB-INF/generated_web.xml"
+	             addWebXmlMappings="true"
+	             outputDir="./WEB-INF/src/" />
+		
+		<echo message="End JSP compile..."/> 
+	              <!-- path to the compiler generated web.xml -->
+	              <!-- automatically merge the "generated_web.xml" into "web.xml" -->
+	              <!-- path to the output of the compilation  -->
+	</target>
+	
+	
+	<target name="compile"
+          description="compile all Java files in src dir"
+          depends="include">
+	  <echo message="Compiling ${project.name}..."/>  	
+	  <!--echo message="Using classpath ${antbuild.classpath}"/-->
+	  <mkdir dir="${antbuild.classes}" />
+		<record name="log.txt" action="start"/>
+		
+		<javac srcdir="${project.src}"
+			destdir="${antbuild.classes}"
+			debug="true"
+			source="1.8"
+			compiler="javac1.8"
+			includes="**/*.java"
+			includeantruntime="false"
+			deprecation="off" >
+			
+			<classpath id="jspc.classpath">
+	            <fileset dir="${deploy.server}/lib">
+	            	<include name="*.jar"/>
+	            </fileset>
+	            <fileset dir="${deploy.server}/bin"> 
+	            	<include name="*.jar"/>
+	            </fileset>
+        		<fileset dir="${project.lib}"> 
+        			 <include name="*.jar"/>
+        		</fileset>
+                        <fileset dir=".">
+				<include name="**/*.txt"/>
+                        </fileset>
+
+        	</classpath>
+		</javac>
+				
+		<record name="log.txt" action="stop"/>
+       </target>
+
+ 
+  <!-- ==================================================================== -->
+  <!-- =========================== JAR TARGETS ============================ -->
+  <!-- ==================================================================== -->
+
+  
+ <!--Generates a war file -->
+  
+  <target name="war-local" description="Bundle project for deployment on local machine" depends="include">
+	<!-- Clean up old war -->
+	
+	<delete file="${project.dist.file}" />
+	<copy todir="${antbuild.classes}">
+		<fileset dir="${project.src}" includes="**/*.txt"/>
+        </copy>
+	<war warfile="${project.dist.file}"
+		webxml="./WEB-INF/web.xml"
+		duplicate="preserve">
+
+		      <!-- Add main classes -->
+		      
+		<classes dir="${antbuild.classes}" />
+
+		      <!-- Add JSP & other files to source -->
+
+		      
+		<fileset dir=".">
+			  <include name="**/*.js"/>
+			  <include name="**/*.gif"/>
+			  <include name="**/*.jsp"/>
+			  <include name="**/*.jpg"/>
+			  <include name="**/*.css"/>
+			  <include name="**/*.htm"/>
+			  <include name="**/*.html"/>
+			  <include name="**/*.png"/>
+			  <include name="**/*.xml"/>
+			  <include name="**/*.xsd"/>
+			  <include name="**/*.properties"/>
+			  <include name="**/*.tld"/>
+			  <include name="**/*.ico"/>
+			  <include name="**/*.dtd"/>
+			  <include name="**/*.sh"/>
+			  <include name="**/*.xsd"/>
+			  <include name="**/*.jpeg"/>
+			  <include name="**/*.psd"/>
+			  <include name="**/*.bmp"/>
+			  <include name="**/*.wml*"/>
+			  <include name="**/*.cfg"/>
+			  <include name="**/*.swf"/>
+			  <include name="**/*.pdf"/>
+  			  <include name="**/*.txt"/>
+			<include name="**/*.woff2"/>
+			<include name="**/*.woff"/>
+			<include name="**/*.svg"/>
+			<include name="**/*.eot"/>
+			<include name="**/*.ttf"/>
+		</fileset> 
+		
+	       	
+		      <!-- Add project libs -->
+		<lib dir="${project.lib}">
+			 <exclude name="mysql-connector-java-3.0.15-ga-bin.jar" />
+			 <exclude name="**/*.zip" />
+		</lib>
+   	 </war> 
+  </target>
+
+	
+  <target name="war-server" description="Bundle project for deployment on production server" depends="include">
+	<!-- Clean up old war -->
+	<delete file="${project.dist}/${project.name}-prod.war" />
+  			
+	<war warfile="${project.dist}/${project.name}-prod.war"
+		webxml="${project.main.web}/WEB-INF/web.xml"
+		duplicate="preserve">
+
+		<!-- Add main classes -->
+		<classes dir="${antbuild.classes}" />
+
+            	
+		<!-- Add project libs -->
+		<lib dir="${project.lib}">
+		  <exclude name="**/*.zip" />
+		</lib>
+	</war>
+  </target>
+	
+  <!-- ==================================================================== -->
+  <!-- ==================== DEPLOYMENT TARGETS ============================ -->
+  <!-- ==================================================================== -->
+
+  <target name="deploy" description="deploy the application" depends="include">
+	    <delete file="${deploy.location}/${project.dist.file}"/>
+	    <delete dir="${deploy.project.location}"/>
+	    <mkdir dir="${deploy.project.location}"/>
+	    <unwar src="${project.dist.file}" dest="${deploy.project.location}"/>
+  </target>
+
+  <target name="deploy-jsp" description="deploy jsps/html/styles/scripts only" depends="include">
+	    <copy todir="${deploy.project.location}">
+	      <fileset dir="${project.main.web}"/>
+	    </copy>
+  </target>
+
+  <target name="deploy-classes" description="deploy classes only" depends="include">
+	    <copy todir="${deploy.classes}">
+	      <fileset dir="${antbuild.classes}" />
+	    </copy>
+  </target>
+
+
+  <!-- ==================================================================== -->
+  <!-- =========================== CLEAN TARGETS ========================== -->
+  <!-- ==================================================================== -->
+
+  <target name="clean" description="Delete all build directories created by this script."
+	  depends="include">
+		<delete dir="${antbuild}"/>
+		<delete dir="./WEB-INF/src/org/"/>
+  </target>
+	
+  <!-- ==================================================================== -->
+  <!-- ================== HELPER/PRIVATE TARGETS ========================== -->
+  <!-- ==================================================================== -->
+
+  <!-- Import properties from file. -->
+
+<target name="include">
+	<property file="build.properties"/>
+	<mkdir dir="dist"/>
+  </target>
+
+<target name="makejar">
+<echo message="creating jar..."/>  
+    	<jar jarfile  = "${project.lib}/acam_in.jar"
+         basedir  = "${antbuild.classes}"
+         includes = "**/**"  
+         excludes = "org/**" 
+        />
+<echo message="creating jar...done.. ${project.lib}/acam.jar"/>  
+  </target>
+
+
+<target name="obfuscate" >
+ <taskdef classname="proguard.ant.ProGuardTask" name="proguard">
+	        <classpath id="jspc.classpath">
+	            <fileset dir="${project.lib}">
+	            	<include name="*.jar"/>
+	            </fileset>
+	        </classpath>
+	    	
+</taskdef>
+<proguard configuration="proguard.pro"/>
+</target>
+
+
+</project>
